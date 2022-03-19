@@ -21,12 +21,15 @@ struct TheVillian {
 
 impl Default for TheVillian {
     fn default() -> Self {
+        let center = Vec2::new(100.0, 100.0);
+        let leg_delta = Vec2::new(50.0, 50.0);
+        let leg2_delta = Vec2::new(50.0, -50.0);
         Self {
-            center: Vec2::new(100.0, 100.0),
-            top_left: Vec2::new(0.0, 0.0),
-            bottom_left: Vec2::new(0.0, 200.0),
-            top_right: Vec2::new(200.0, 0.0),
-            bottom_right: Vec2::new(200.0, 200.0),
+            center,
+            top_left: center - leg_delta,
+            bottom_left: center - leg2_delta,
+            top_right: center + leg2_delta,
+            bottom_right: center + leg_delta,
         }
     }
 }
@@ -54,6 +57,19 @@ impl TheVillian {
         let leg_delta = leg_delta + diff;
         // calculate new point in absolute space by adding vector to center point
         *current_leg = leg_delta + self.center;
+    }
+
+    fn reset_leg_positions(&mut self) {
+        let center = self.center;
+        let leg_delta = Vec2::new(50.0, 50.0);
+        let leg2_delta = Vec2::new(50.0, -50.0);
+        *self = Self {
+            center,
+            top_left: center - leg_delta,
+            bottom_left: center - leg2_delta,
+            top_right: center + leg2_delta,
+            bottom_right: center + leg_delta,
+        }
     }
 }
 
@@ -98,10 +114,26 @@ impl event::EventHandler<ggez::GameError> for QWOPtopus {
         let origin = Vec2::new(0.0, 0.0);
         let body = graphics::MeshBuilder::new()
             .circle(graphics::DrawMode::fill(), origin, 100.0, 2.0, Color::WHITE)?
-            .line(&[origin, self.player.top_left], 2.0, Color::GREEN)?
-            .line(&[origin, self.player.top_right], 2.0, Color::GREEN)?
-            .line(&[origin, self.player.bottom_left], 2.0, Color::GREEN)?
-            .line(&[origin, self.player.bottom_right], 2.0, Color::GREEN)?
+            .line(
+                &[origin, self.player.top_left - self.player.center],
+                2.0,
+                Color::GREEN,
+            )?
+            .line(
+                &[origin, self.player.top_right - self.player.center],
+                2.0,
+                Color::GREEN,
+            )?
+            .line(
+                &[origin, self.player.bottom_left - self.player.center],
+                2.0,
+                Color::GREEN,
+            )?
+            .line(
+                &[origin, self.player.bottom_right - self.player.center],
+                2.0,
+                Color::GREEN,
+            )?
             .build(ctx)?;
 
         graphics::draw(ctx, &body, (self.player.center,))?;
@@ -145,6 +177,7 @@ impl event::EventHandler<ggez::GameError> for QWOPtopus {
                 self.input = Some(InputState::TopRight(Direction::Extending));
             }
             KeyCode::Escape => event::quit(ctx),
+            KeyCode::Space => self.player.reset_leg_positions(),
             _ => (), // Do nothing
         }
     }
