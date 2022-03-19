@@ -6,7 +6,7 @@ use glam::*;
 
 #[derive(Debug)]
 struct QWOPtopus {
-    input: Option<InputState>,
+    input: InputState,
     player: TheVillian,
 }
 
@@ -21,9 +21,9 @@ struct TheVillian {
 
 impl Default for TheVillian {
     fn default() -> Self {
-        let center = Vec2::new(100.0, 100.0);
-        let leg_delta = Vec2::new(50.0, 50.0);
-        let leg2_delta = Vec2::new(50.0, -50.0);
+        let center = Vec2::new(400.0, 400.0);
+        let leg_delta = Vec2::new(50.0, 50.0) * 0.3;
+        let leg2_delta = Vec2::new(50.0, -50.0) * 0.3;
         Self {
             center,
             top_left: center - leg_delta,
@@ -39,15 +39,9 @@ impl TheVillian {
         self.center = (self.top_left + self.top_right + self.bottom_left + self.bottom_right) / 4.0;
     }
 
-    fn move_leg(&mut self, input: InputState) {
-        let (current_leg, direction) = match input {
-            InputState::TopLeft(direction) => (&mut self.top_left, direction),
-            InputState::BottomLeft(direction) => (&mut self.bottom_left, direction),
-            InputState::TopRight(direction) => (&mut self.top_right, direction),
-            InputState::BottomRight(direction) => (&mut self.bottom_right, direction),
-        };
+    fn move_leg(center: Vec2, current_leg: &mut Vec2, direction: Direction) {
         // get the vector between current center and given leg by subtracting center point from leg
-        let leg_delta = *current_leg - self.center;
+        let leg_delta = *current_leg - center;
         let diff = match direction {
             // increase length if direction is extending
             Direction::Extending => leg_delta.normalize(),
@@ -56,13 +50,13 @@ impl TheVillian {
         };
         let leg_delta = leg_delta + diff;
         // calculate new point in absolute space by adding vector to center point
-        *current_leg = leg_delta + self.center;
+        *current_leg = leg_delta + center;
     }
 
     fn reset_leg_positions(&mut self) {
         let center = self.center;
-        let leg_delta = Vec2::new(50.0, 50.0);
-        let leg2_delta = Vec2::new(50.0, -50.0);
+        let leg_delta = Vec2::new(50.0, 50.0) * 0.3;
+        let leg2_delta = Vec2::new(50.0, -50.0) * 0.3;
         *self = Self {
             center,
             top_left: center - leg_delta,
@@ -76,19 +70,19 @@ impl TheVillian {
 impl QWOPtopus {
     fn new() -> GameResult<QWOPtopus> {
         let s = QWOPtopus {
-            input: None,
+            input: InputState::default(),
             player: TheVillian::default(),
         };
         Ok(s)
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum InputState {
-    TopLeft(Direction),
-    BottomLeft(Direction),
-    TopRight(Direction),
-    BottomRight(Direction),
+#[derive(Debug, Default, Clone, Copy)]
+struct InputState {
+    top_left: Option<Direction>,
+    bottom_left: Option<Direction>,
+    top_right: Option<Direction>,
+    bottom_right: Option<Direction>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -100,9 +94,39 @@ enum Direction {
 impl event::EventHandler<ggez::GameError> for QWOPtopus {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         dbg!(&self);
-        if let Some(input) = self.input {
-            self.player.move_leg(input);
-        } else {
+
+        let moved = false;
+        let moved = moved
+            | self
+                .input
+                .bottom_right
+                .map(|dir| {
+                    TheVillian::move_leg(self.player.center, &mut self.player.bottom_right, dir)
+                })
+                .is_some();
+        let moved = moved
+            | self
+                .input
+                .bottom_left
+                .map(|dir| {
+                    TheVillian::move_leg(self.player.center, &mut self.player.bottom_left, dir)
+                })
+                .is_some();
+        let moved = moved
+            | self
+                .input
+                .top_left
+                .map(|dir| TheVillian::move_leg(self.player.center, &mut self.player.top_left, dir))
+                .is_some();
+        let moved = moved
+            | self
+                .input
+                .top_right
+                .map(|dir| {
+                    TheVillian::move_leg(self.player.center, &mut self.player.top_right, dir)
+                })
+                .is_some();
+        if !moved {
             self.player.update_center();
         }
         Ok(())
@@ -113,7 +137,7 @@ impl event::EventHandler<ggez::GameError> for QWOPtopus {
 
         let origin = Vec2::new(0.0, 0.0);
         let body = graphics::MeshBuilder::new()
-            .circle(graphics::DrawMode::fill(), origin, 100.0, 2.0, Color::WHITE)?
+            .circle(graphics::DrawMode::fill(), origin, 20.0, 2.0, Color::WHITE)?
             .line(
                 &[origin, self.player.top_left - self.player.center],
                 2.0,
@@ -153,28 +177,28 @@ impl event::EventHandler<ggez::GameError> for QWOPtopus {
     ) {
         match keycode {
             KeyCode::Q => {
-                self.input = Some(InputState::TopLeft(Direction::Extending));
+                self.input.top_left = Some(Direction::Extending);
             }
             KeyCode::W => {
-                self.input = Some(InputState::BottomLeft(Direction::Extending));
+                self.input.bottom_left = Some(Direction::Extending);
             }
             KeyCode::E => {
-                self.input = Some(InputState::BottomLeft(Direction::Retracting));
+                self.input.bottom_left = Some(Direction::Retracting);
             }
             KeyCode::R => {
-                self.input = Some(InputState::TopLeft(Direction::Retracting));
+                self.input.top_left = Some(Direction::Retracting);
             }
             KeyCode::U => {
-                self.input = Some(InputState::TopRight(Direction::Retracting));
+                self.input.top_right = Some(Direction::Retracting);
             }
             KeyCode::I => {
-                self.input = Some(InputState::BottomRight(Direction::Retracting));
+                self.input.bottom_right = Some(Direction::Retracting);
             }
             KeyCode::O => {
-                self.input = Some(InputState::BottomRight(Direction::Extending));
+                self.input.bottom_right = Some(Direction::Extending);
             }
             KeyCode::P => {
-                self.input = Some(InputState::TopRight(Direction::Extending));
+                self.input.top_right = Some(Direction::Extending);
             }
             KeyCode::Escape => event::quit(ctx),
             KeyCode::Space => self.player.reset_leg_positions(),
@@ -182,8 +206,14 @@ impl event::EventHandler<ggez::GameError> for QWOPtopus {
         }
     }
 
-    fn key_up_event(&mut self, _ctx: &mut Context, _keycode: KeyCode, _keymod: KeyMods) {
-        self.input = None;
+    fn key_up_event(&mut self, _ctx: &mut Context, keycode: KeyCode, _keymod: KeyMods) {
+        match keycode {
+            KeyCode::Q | KeyCode::R => self.input.top_left = None,
+            KeyCode::W | KeyCode::E => self.input.bottom_left = None,
+            KeyCode::U | KeyCode::P => self.input.top_right = None,
+            KeyCode::I | KeyCode::O => self.input.bottom_right = None,
+            _ => (), // Do nothing
+        }
     }
 }
 
