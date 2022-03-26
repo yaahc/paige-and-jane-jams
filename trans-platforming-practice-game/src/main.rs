@@ -69,6 +69,7 @@ struct TransPlatformer {
 
 const WORLD_WIDTH: f32 = 100.0;
 const WORLD_HEIGHT: f32 = 100.0;
+const BALL_RADIUS: f32 = 8.0;
 
 impl TransPlatformer {
     #[must_use]
@@ -82,7 +83,7 @@ impl TransPlatformer {
         let rigid_body = RigidBodyBuilder::new_dynamic()
             .translation(vector![WORLD_WIDTH / 2.0, WORLD_HEIGHT])
             .build();
-        let collider = ColliderBuilder::ball(0.5).restitution(0.7).build();
+        let collider = ColliderBuilder::ball(BALL_RADIUS).restitution(0.95).build();
         let ball_body_handle = reality.rigid_body_set.insert(rigid_body);
         reality.collider_set.insert_with_parent(
             collider,
@@ -101,6 +102,18 @@ impl TransPlatformer {
     }
 }
 
+fn world_to_screen(ctx: &Context, v: f32) -> f32 {
+    let (screen_width, _) = graphics::size(ctx);
+    v * screen_width / WORLD_WIDTH
+}
+
+fn world_to_screen_pos(ctx: &Context, world_point: Vec2) -> Vec2 {
+    let (screen_width, screen_height) = graphics::size(ctx);
+    Vec2::new(
+        world_to_screen(ctx, world_point.x),
+        screen_height - world_to_screen(ctx, world_point.y))
+}
+
 impl event::EventHandler<ggez::GameError> for TransPlatformer {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         self.reality.update();
@@ -110,19 +123,56 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
     }
 
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
-        graphics::clear(ctx, [0.1, 0.2, 0.3, 1.0].into());
+        println!("screen size: {:?}", graphics::size(ctx));
+        graphics::clear(ctx, [0.5, 0.5, 0.5, 1.0].into());
+        let size = graphics::size(ctx);
+        graphics::set_screen_coordinates(ctx, [0.0, 0.0, size.0, size.1].into());
 
+        let bg_rect = graphics::Rect::new(
+                world_to_screen(ctx, 4.0),
+                world_to_screen(ctx, 4.0),
+                world_to_screen(ctx, WORLD_WIDTH - 8.0),
+                world_to_screen(ctx, WORLD_HEIGHT - 8.0));
+        dbg!(&bg_rect);
+
+        let bg = graphics::Mesh::new_rectangle(ctx,
+            graphics::DrawMode::Fill(Default::default()),
+            bg_rect,
+            [0.1, 0.2, 0.3, 1.0].into())?;
+        graphics::draw(ctx, &bg, (Vec2::new(0.0, 0.0),))?;
+
+        for i in 0..10 {
+            for j in 0..10 {
+                let c = graphics::Mesh::new_circle(ctx,
+                    graphics::DrawMode::Fill(Default::default()),
+                    Vec2::new(i as f32 * 50.0, j as f32 * 50.0),
+                    5.0,
+                    1.0,
+                    [1.0, 0.0, 0.0, 1.0].into())?;
+                graphics::draw(ctx, &c, (Vec2::new(5.0, 5.0),))?;
+            }
+        }
+
+        for i in 0..10 {
+            for j in 0..10 {
+                let c = graphics::Mesh::new_circle(ctx,
+                    graphics::DrawMode::Fill(Default::default()),
+                    Vec2::new(0.0, 0.0),
+                    5.0,
+                    1.0,
+                    [0.0, 0.0, 1.0, 1.0].into())?;
+                graphics::draw(ctx, &c,
+                    (Vec2::new(i as f32 * 50.0, j as f32 * 50.0),))?;
+            }
+        }
+
+        let radius = BALL_RADIUS * graphics::size(ctx).0 / WORLD_WIDTH;
         let origin = Vec2::new(0.0, 0.0);
         let body = graphics::MeshBuilder::new()
-            .circle(graphics::DrawMode::fill(), origin, 20.0, 2.0, Color::WHITE)?
+            .circle(graphics::DrawMode::fill(), origin, radius, 0.4, Color::WHITE)?
             .build(ctx)?;
 
-        let screen_size = graphics::size(ctx);
-        let world_point = self.ball().point();
-        let screen_point = Vec2::new(
-            world_point.x * screen_size.0 / WORLD_WIDTH,
-            screen_size.1 - world_point.y * screen_size.1 / WORLD_HEIGHT);
-
+        let screen_point = world_to_screen_pos(ctx, self.ball().point());
         graphics::draw(ctx, &body, (screen_point,))?;
 
         graphics::present(ctx)?;
@@ -132,7 +182,11 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
 
 pub fn main() -> GameResult {
     let cb = ggez::ContextBuilder::new("trans platformer", "paige & jane");
-    let (ctx, event_loop) = cb.build()?;
+    let (mut ctx, event_loop) = cb.build()?;
+    graphics::set_mode(&mut ctx, ggez::conf::WindowMode {
+        resizable: true,
+        .. Default::default()
+    }).expect(">:U");
     let state = TransPlatformer::new(&ctx);
     event::run(ctx, event_loop, state)
 }
