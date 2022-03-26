@@ -67,17 +67,20 @@ struct TransPlatformer {
     ball: RigidBodyHandle,
 }
 
+const WORLD_WIDTH: f32 = 100.0;
+const WORLD_HEIGHT: f32 = 100.0;
+
 impl TransPlatformer {
     #[must_use]
     fn new(ctx: &Context) -> Self {
         let mut reality = Reality::default();
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(100.0, 0.1).build();
+        let collider = ColliderBuilder::cuboid(WORLD_WIDTH, 0.1).build();
         reality.collider_set.insert(collider);
 
         /* Create the bouncing ball. */
         let rigid_body = RigidBodyBuilder::new_dynamic()
-            .translation(vector![100.0, 10.0])
+            .translation(vector![WORLD_WIDTH / 2.0, WORLD_HEIGHT])
             .build();
         let collider = ColliderBuilder::ball(0.5).restitution(0.7).build();
         let ball_body_handle = reality.rigid_body_set.insert(rigid_body);
@@ -114,7 +117,13 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
             .circle(graphics::DrawMode::fill(), origin, 20.0, 2.0, Color::WHITE)?
             .build(ctx)?;
 
-        graphics::draw(ctx, &body, (self.ball().point(),))?;
+        let screen_size = graphics::size(ctx);
+        let world_point = self.ball().point();
+        let screen_point = Vec2::new(
+            world_point.x * screen_size.0 / WORLD_WIDTH,
+            screen_size.1 - world_point.y * screen_size.1 / WORLD_HEIGHT);
+
+        graphics::draw(ctx, &body, (screen_point,))?;
 
         graphics::present(ctx)?;
         Ok(())
