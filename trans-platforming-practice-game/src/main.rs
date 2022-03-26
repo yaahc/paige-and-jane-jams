@@ -114,6 +114,13 @@ fn world_to_screen_pos(ctx: &Context, world_point: Vec2) -> Vec2 {
         screen_height - world_to_screen(ctx, world_point.y))
 }
 
+fn world_to_screen_uhh(ctx: &Context, world_point: Vec2) -> Vec2 {
+    let (screen_width, screen_height) = graphics::size(ctx);
+    Vec2::new(
+        world_to_screen(ctx, world_point.x),
+        -world_to_screen(ctx, world_point.y))
+}
+
 impl event::EventHandler<ggez::GameError> for TransPlatformer {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         self.reality.update();
@@ -126,13 +133,12 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
         println!("screen size: {:?}", graphics::size(ctx));
         graphics::clear(ctx, [0.5, 0.5, 0.5, 1.0].into());
         let size = graphics::size(ctx);
-        graphics::set_screen_coordinates(ctx, [0.0, 0.0, size.0, size.1].into());
-
+        graphics::set_screen_coordinates(ctx, [0.0, 0.0, size.0, size.1].into())?;
+        let bg_pos = world_to_screen_pos(ctx, Vec2::new(4.0, 4.0));
+        let bg_size = world_to_screen_uhh(ctx,
+            Vec2::new(WORLD_WIDTH - 8.0, WORLD_HEIGHT - 8.0));
         let bg_rect = graphics::Rect::new(
-                world_to_screen(ctx, 4.0),
-                world_to_screen(ctx, 4.0),
-                world_to_screen(ctx, WORLD_WIDTH - 8.0),
-                world_to_screen(ctx, WORLD_HEIGHT - 8.0));
+            bg_pos.x, bg_pos.y, bg_size.x, bg_size.y);
         dbg!(&bg_rect);
 
         let bg = graphics::Mesh::new_rectangle(ctx,
@@ -148,7 +154,7 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
                     Vec2::new(i as f32 * 50.0, j as f32 * 50.0),
                     5.0,
                     1.0,
-                    [1.0, 0.0, 0.0, 1.0].into())?;
+                    [1.0, j as f32 * 0.1, 0.0, 1.0].into())?;
                 graphics::draw(ctx, &c, (Vec2::new(5.0, 5.0),))?;
             }
         }
@@ -160,9 +166,9 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
                     Vec2::new(0.0, 0.0),
                     5.0,
                     1.0,
-                    [0.0, 0.0, 1.0, 1.0].into())?;
+                    [0.0, j as f32 * 0.1, 1.0, 1.0].into())?;
                 graphics::draw(ctx, &c,
-                    (Vec2::new(i as f32 * 50.0, j as f32 * 50.0),))?;
+                    (world_to_screen_pos(ctx, Vec2::new(i as f32 * 10.0, j as f32 * 10.0)),))?;
             }
         }
 
