@@ -111,14 +111,14 @@ fn world_to_screen_pos(ctx: &Context, world_point: Vec2) -> Vec2 {
     let (screen_width, screen_height) = graphics::size(ctx);
     Vec2::new(
         world_to_screen(ctx, world_point.x),
-        screen_height - world_to_screen(ctx, world_point.y))
+        world_to_screen(ctx, world_point.y))
 }
 
 fn world_to_screen_uhh(ctx: &Context, world_point: Vec2) -> Vec2 {
     let (screen_width, screen_height) = graphics::size(ctx);
     Vec2::new(
         world_to_screen(ctx, world_point.x),
-        -world_to_screen(ctx, world_point.y))
+        world_to_screen(ctx, world_point.y))
 }
 
 impl event::EventHandler<ggez::GameError> for TransPlatformer {
@@ -133,7 +133,7 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
         println!("screen size: {:?}", graphics::size(ctx));
         graphics::clear(ctx, [0.5, 0.5, 0.5, 1.0].into());
         let size = graphics::size(ctx);
-        graphics::set_screen_coordinates(ctx, [0.0, 0.0, size.0, size.1].into())?;
+        graphics::set_screen_coordinates(ctx, [0.0, size.1, size.0, -size.1].into())?;
         let bg_pos = world_to_screen_pos(ctx, Vec2::new(4.0, 4.0));
         let bg_size = world_to_screen_uhh(ctx,
             Vec2::new(WORLD_WIDTH - 8.0, WORLD_HEIGHT - 8.0));
