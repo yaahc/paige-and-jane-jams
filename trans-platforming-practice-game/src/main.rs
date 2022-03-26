@@ -67,9 +67,9 @@ struct TransPlatformer {
     ball: RigidBodyHandle,
 }
 
-const WORLD_WIDTH: f32 = 100.0;
-const WORLD_HEIGHT: f32 = 100.0;
-const BALL_RADIUS: f32 = 8.0;
+const WORLD_WIDTH: f32 = 10.0;
+const WORLD_HEIGHT: f32 = 10.0;
+const BALL_RADIUS: f32 = 1.0;
 
 impl TransPlatformer {
     #[must_use]
@@ -102,25 +102,6 @@ impl TransPlatformer {
     }
 }
 
-fn world_to_screen(ctx: &Context, v: f32) -> f32 {
-    let (screen_width, _) = graphics::size(ctx);
-    v * screen_width / WORLD_WIDTH
-}
-
-fn world_to_screen_pos(ctx: &Context, world_point: Vec2) -> Vec2 {
-    let (screen_width, screen_height) = graphics::size(ctx);
-    Vec2::new(
-        world_to_screen(ctx, world_point.x),
-        world_to_screen(ctx, world_point.y))
-}
-
-fn world_to_screen_uhh(ctx: &Context, world_point: Vec2) -> Vec2 {
-    let (screen_width, screen_height) = graphics::size(ctx);
-    Vec2::new(
-        world_to_screen(ctx, world_point.x),
-        world_to_screen(ctx, world_point.y))
-}
-
 impl event::EventHandler<ggez::GameError> for TransPlatformer {
     fn update(&mut self, _ctx: &mut Context) -> GameResult {
         self.reality.update();
@@ -132,53 +113,58 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
     fn draw(&mut self, ctx: &mut Context) -> GameResult {
         println!("screen size: {:?}", graphics::size(ctx));
         graphics::clear(ctx, [0.5, 0.5, 0.5, 1.0].into());
-        let size = graphics::size(ctx);
-        graphics::set_screen_coordinates(ctx, [0.0, size.1, size.0, -size.1].into())?;
-        let bg_pos = world_to_screen_pos(ctx, Vec2::new(4.0, 4.0));
-        let bg_size = world_to_screen_uhh(ctx,
-            Vec2::new(WORLD_WIDTH - 8.0, WORLD_HEIGHT - 8.0));
-        let bg_rect = graphics::Rect::new(
-            bg_pos.x, bg_pos.y, bg_size.x, bg_size.y);
+        graphics::set_screen_coordinates(ctx, [0.0, 0.0, WORLD_WIDTH, WORLD_HEIGHT].into())?;
+        let bg_rect = graphics::Rect::new(0.0, 0.0, 9.0, 9.0);
         dbg!(&bg_rect);
 
-        let bg = graphics::Mesh::new_rectangle(ctx,
+        let bg = graphics::Mesh::new_rectangle(
+            ctx,
             graphics::DrawMode::Fill(Default::default()),
             bg_rect,
-            [0.1, 0.2, 0.3, 1.0].into())?;
-        graphics::draw(ctx, &bg, (Vec2::new(0.0, 0.0),))?;
+            [0.1, 0.2, 0.3, 1.0].into(),
+        )?;
+        graphics::draw(ctx, &bg, (Vec2::new(1.0, 1.0),))?;
 
-        for i in 0..10 {
-            for j in 0..10 {
-                let c = graphics::Mesh::new_circle(ctx,
-                    graphics::DrawMode::Fill(Default::default()),
-                    Vec2::new(i as f32 * 50.0, j as f32 * 50.0),
-                    5.0,
-                    1.0,
-                    [1.0, j as f32 * 0.1, 0.0, 1.0].into())?;
-                graphics::draw(ctx, &c, (Vec2::new(5.0, 5.0),))?;
-            }
-        }
+        // for i in 0..10 {
+        //     for j in 0..10 {
+        //         let c = graphics::Mesh::new_circle(
+        //             ctx,
+        //             graphics::DrawMode::Fill(Default::default()),
+        //             Vec2::new(i as f32 * 50.0, j as f32 * 50.0),
+        //             5.0,
+        //             1.0,
+        //             [1.0, j as f32 * 0.1, 0.0, 1.0].into(),
+        //         )?;
+        //         graphics::draw(ctx, &c, (Vec2::new(5.0, 5.0),))?;
+        //     }
+        // }
 
-        for i in 0..10 {
-            for j in 0..10 {
-                let c = graphics::Mesh::new_circle(ctx,
-                    graphics::DrawMode::Fill(Default::default()),
-                    Vec2::new(0.0, 0.0),
-                    5.0,
-                    1.0,
-                    [0.0, j as f32 * 0.1, 1.0, 1.0].into())?;
-                graphics::draw(ctx, &c,
-                    (world_to_screen_pos(ctx, Vec2::new(i as f32 * 10.0, j as f32 * 10.0)),))?;
-            }
-        }
+        // for i in 0..10 {
+        //     for j in 0..10 {
+        //         let c = graphics::Mesh::new_circle(
+        //             ctx,
+        //             graphics::DrawMode::Fill(Default::default()),
+        //             Vec2::new(0.0, 0.0),
+        //             5.0,
+        //             1.0,
+        //             [0.0, j as f32 * 0.1, 1.0, 1.0].into(),
+        //         )?;
+        //         graphics::draw(ctx, &c, (Vec2::new(i as f32 * 10.0, j as f32 * 10.0),))?;
+        //     }
+        // }
 
-        let radius = BALL_RADIUS * graphics::size(ctx).0 / WORLD_WIDTH;
         let origin = Vec2::new(0.0, 0.0);
         let body = graphics::MeshBuilder::new()
-            .circle(graphics::DrawMode::fill(), origin, radius, 0.4, Color::WHITE)?
+            .circle(
+                graphics::DrawMode::fill(),
+                origin,
+                BALL_RADIUS,
+                0.4,
+                Color::WHITE,
+            )?
             .build(ctx)?;
 
-        let screen_point = world_to_screen_pos(ctx, self.ball().point());
+        let screen_point = self.ball().point();
         graphics::draw(ctx, &body, (screen_point,))?;
 
         graphics::present(ctx)?;
@@ -189,10 +175,14 @@ impl event::EventHandler<ggez::GameError> for TransPlatformer {
 pub fn main() -> GameResult {
     let cb = ggez::ContextBuilder::new("trans platformer", "paige & jane");
     let (mut ctx, event_loop) = cb.build()?;
-    graphics::set_mode(&mut ctx, ggez::conf::WindowMode {
-        resizable: true,
-        .. Default::default()
-    }).expect(">:U");
+    graphics::set_mode(
+        &mut ctx,
+        ggez::conf::WindowMode {
+            resizable: true,
+            ..Default::default()
+        },
+    )
+    .expect(">:U");
     let state = TransPlatformer::new(&ctx);
     event::run(ctx, event_loop, state)
 }
